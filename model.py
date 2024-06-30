@@ -1,3 +1,4 @@
+import os
 import csv
 import time 
 import pygetwindow as gw
@@ -61,12 +62,13 @@ class ProductiveModel:
             print('done')
             connection.commit()
             connection.close()
-            
+            # delete the csv file
+        os.remove('activity_log.csv')
 
     def check_type_of_activity(self, activity):
         # arrays for activities        
-        work_activities = ['Visual Studio Code','StB_Static']
-        entertainment_activities = ['youtube', 'netflix', 'prime video', 'disney+', 'spotify']
+        work_activities = ['Visual Studio Code']
+        entertainment_activities = ['youtube', 'netflix', 'prime video', 'disney+', 'spotify', 'World of Warcraft', 'battle.net', 'steam', 'stb_static']
         # loops through the arrays and checks if the activity is in the arrays
         for work in work_activities:
             if work.lower() in activity.lower():

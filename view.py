@@ -59,7 +59,11 @@ class MainWindow(QMainWindow):
             return
         # iterate over the data and add it to the series
         for category , value in data.items():
-             series.append(category, value)
+            series.append(category, value)
+            # set the label of the last slice to display the category and value
+            last_slice = series.slices()[-1]
+            last_slice.setLabelVisible(True)
+            last_slice.setLabel(f"{category}, {value} minutes")
         # create a QChart object and set the series
         chart = QChart()
         chart.addSeries(series)

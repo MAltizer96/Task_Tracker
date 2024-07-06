@@ -28,10 +28,10 @@ class ProductivityApp():
         self.view.stop_tracking()
 
     def submit_to_db(self):
-        self.model.write_daily_activity_to_db()
+        self.model.write_daily_activity_to_db_csv()
     
     def create_pie_chart(self):
-        data = self.model.fetch_data()
+        data = self.model.fetch_data_csv()
         print(f'data: {data}')
         self.view.setup_pie_chart(data)
 
@@ -41,7 +41,8 @@ class ProductivityApp():
 
         print('stopping tracking')
         self.model.stop_tracking()
-        self.tracking_thread.join()
+        if self.model.is_tracking:
+            self.tracking_thread.join()
 
 
 app = QApplication([])

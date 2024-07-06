@@ -4,14 +4,20 @@ import time
 import pygetwindow as gw
 import sqlite3
 
+import ctypes
+import time
+from ctypes import Structure, c_uint, sizeof, windll
+
 class ProductiveModel:
     def __init__(self):
         self.is_tracking = False
 
-
     def start_tracking(self):
         self.is_tracking = True                            
         while self.is_tracking:
+            if self.is_user_afk():
+                print('User is AFK')
+                continue
             try:
                 # get the active window
                 active_window = gw.getActiveWindow().title
@@ -30,41 +36,64 @@ class ProductiveModel:
     def stop_tracking(self):
         self.is_tracking = False
 
-    def write_daily_activity_to_db(self):
-        # open csv to read
-        with open('activity_log.csv', mode='r') as file:
-            csv_reader = csv.reader(file)
+    def write_daily_activity_to_db_csv(self):
+        # create a dictionary to store the activity log data
+        activity_log_db = {}
+        try:
+            # open the db file to read
+            with open('activity_log_db.csv', mode='r') as file:
+                csv_reader = csv.reader(file)
+                # read the db file and store the data in the dictionary
+                for row in csv_reader:
+                    # add the data to the dictionary with the type as the key and the count as the value
+                    activity_log_db [row['type']] = int(row['count'])
+        except FileNotFoundError:
+            pass
 
-            # create a connection to the database
-            connection = sqlite3.connect('activity_log.db')
-            cursor = connection.cursor()
-            # create db is needed
-            cursor.execute('CREATE TABLE IF NOT EXISTS activity_log (type TEXT, count INTEGER)')
-            # reads the csv file and checks the type of activity
-            for column in csv_reader:   
-                # check the type of activity             
-                activity_type = self.check_type_of_activity(column[1])     
-                if activity_type == 'uncategorized':                     
+        with open ('activity_log.csv', mode='r') as file:
+            csv_reader = csv.reader(file)  
+            # read the csv file and check the type of activity          
+            for column in csv_reader:
+                # check the type of activity
+                activity_type = self.check_type_of_activity(column[1])
+                if activity_type == 'uncategorized':
                     with open('uncategorized_activities.csv', mode='a', newline='') as uncategorized_file:
                         uncategorized_writer = csv.writer(uncategorized_file)
                         uncategorized_writer.writerow([column[0], column[1]])                      
                     continue
-                # check if the activity is in the db       
-                cursor.execute('SELECT * FROM activity_log WHERE type = ?', (activity_type,))
-                result = cursor.fetchone()
-                if result:
-                    # if the activity is in the db, update the count
-                    cursor.execute('UPDATE activity_log SET count = count + 1 WHERE type = ?', (activity_type,))
+                # check if the activity is in the dictionary
+                if activity_type in activity_log_db:
+                    activity_log_db[activity_type] += 1
+                # if the activity is not in the dictionary, add it
                 else:
-                    # if the activity is not in the db, insert the activity
-                    cursor.execute('INSERT INTO activity_log VALUES (?, ?)', (activity_type, 1))
-            # commit and close the connection
-            print('done')
-            connection.commit()
-            connection.close()
-            # delete the csv file
+                    activity_log_db[activity_type] = 1
+        
+        with open ('activity_log_db.csv', mode='w', newline='') as file:
+            db_writer = csv.writer(file)
+            # write the header
+            db_writer.writerow(['type', 'count'])
+
+            for activity_type, count in activity_log_db.items():
+                db_writer.writerow([activity_type, count])
+        # delete the csv file
         os.remove('activity_log.csv')
 
+    def fetch_data_csv(self):
+        # create a dictionary to store the data
+        data = {}
+        try:
+            # open the db file to read
+            with open('activity_log_db.csv', mode='r') as file:
+                csv_reader = csv.reader(file)
+                next(csv_reader)
+                # read the db file and store the data in the dictionary
+                for row in csv_reader:
+                    # add the data to the dictionary with the type as the key and the count as the value
+                    data[row[0]] = int(row[1])
+        except FileNotFoundError:
+            pass
+        return data
+    
     def check_type_of_activity(self, activity):
         # arrays for activities        
         work_activities = ['Visual Studio Code']
@@ -78,20 +107,26 @@ class ProductiveModel:
             if entertainment.lower() in activity.lower():
                 return 'entertainment'
         
-        return 'uncategorized'
-    
-    def fetch_data(self):
-        # open connection to the db
-        connection = sqlite3.connect('activity_log.db')
-        cursor = connection.cursor()
-        # get the count of work and entertainment activities
-        work_activities_count = cursor.execute('SELECT count FROM activity_log WHERE type = "work"').fetchone()
-        entertainment_activities_count = cursor.execute('SELECT count FROM activity_log WHERE type = "entertainment"').fetchone()
-        # calculate the time spent on work and entertainment activities in minutes
-        work_activity_time = self.calculate_activities_time_in_minutes(work_activities_count[0])       
-        entertainment_activity_time = self.calculate_activities_time_in_minutes(entertainment_activities_count[0])
-        return {'work': work_activity_time, 'entertainment': entertainment_activity_time}
+        return 'uncategorized'   
    
     def calculate_activities_time_in_minutes(self, activity_count):
         return activity_count * 5 / 60 
     
+    def is_user_afk(self, threshold=10):
+        # Get the tick count when the last input event was recorded
+        last_input_tick = LASTINPUTINFO.get_last_input()
+        # Get the current tick count
+        current_tick = windll.kernel32.GetTickCount()
+        # Calculate the difference in milliseconds
+        elapsed = (current_tick - last_input_tick) / 1000.0
+        # Check if the user has been AFK longer than the threshold
+        return elapsed > threshold
+    
+class LASTINPUTINFO(Structure):
+    _fields_ = [("cbSize", c_uint), ("dwTime", c_uint)]
+
+    def get_last_input():
+        lii = LASTINPUTINFO()
+        lii.cbSize = sizeof(LASTINPUTINFO)
+        windll.user32.GetLastInputInfo(ctypes.byref(lii))
+        return lii.dwTime

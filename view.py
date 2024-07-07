@@ -31,6 +31,7 @@ class MainWindow(QMainWindow):
         self.stop_button = QPushButton('Stop Tracking')
         self.submit_to_db_button = QPushButton('Submit to DB')
         self.visualize_button = QPushButton('Visualize Data')
+        self.recheck_uncategorized_button = QPushButton('Recheck Uncategorized')
 
         # create a QLabel widget to display the status of tracking
         self.status_indicator = QLabel(self)
@@ -42,6 +43,7 @@ class MainWindow(QMainWindow):
         # Create a QVBoxLayout to arrange widgets vertically
         layout = QVBoxLayout()
         layout.addLayout(start_layout)
+        layout.addWidget(self.recheck_uncategorized_button)
         layout.addWidget(self.stop_button)
         layout.addWidget(self.submit_to_db_button)
         layout.addWidget(self.visualize_button)

@@ -16,7 +16,7 @@ class ProductivityApp():
         self.view.stop_button.clicked.connect(self.stop_tracking)
         self.view.submit_to_db_button.clicked.connect(self.submit_to_db)
         self.view.visualize_button.clicked.connect(self.create_pie_chart)
-        self.view.recheck_uncategorized_button.clicked.connect(self.recheck_uncategorized_activities)
+        self.view.recheck_uncategorized_button.clicked.connect(self.recheck_uncategorized)
 
     def start_tracking(self):
         if not self.model.is_tracking:
@@ -36,8 +36,8 @@ class ProductivityApp():
         print(f'data: {data}')
         self.view.setup_pie_chart(data)
 
-    def recheck_uncategorized_activities(self):
-        self.model.recheck_uncategorized_activities()
+    def recheck_uncategorized(self):
+        self.model.recheck_uncategorized()
 
     def on_app_exit(self):
         print('stopping tracking')

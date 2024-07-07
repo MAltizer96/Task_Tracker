@@ -2,16 +2,24 @@ import os
 import csv
 import time 
 import pygetwindow as gw
-import sqlite3
-
+import json
 import ctypes
 import time
 from ctypes import Structure, c_uint, sizeof, windll
 
 class ProductiveModel:
     def __init__(self):
+        self.work_activities = []
+        self.entertainment_activities = []
+        self.get_actvity_types()
         self.is_tracking = False
 
+    def get_actvity_types(self):
+        with open('activity_types.json', 'r') as file:
+            data = json.load(file)
+            self.work_activites = data['work']
+            self.entertainment_activities = data['entertainment']
+        
     def start_tracking(self):
         self.is_tracking = True                            
         while self.is_tracking:
@@ -96,18 +104,63 @@ class ProductiveModel:
     
     def check_type_of_activity(self, activity):
         # arrays for activities        
-        work_activities = ['Visual Studio Code']
-        entertainment_activities = ['youtube', 'netflix', 'prime video', 'disney+', 'spotify', 'World of Warcraft', 'battle.net', 'steam', 'stb_static']
+        # work_activities = ['Visual Studio Code']
+        # entertainment_activities = ['youtube', 'netflix', 'prime video', 'disney+', 'spotify', 'World of Warcraft', 'battle.net', 'steam', 'stb_static']
         # loops through the arrays and checks if the activity is in the arrays
-        for work in work_activities:
+        for work in self.work_activities:
             if work.lower() in activity.lower():
                 return 'work'
             
-        for entertainment in entertainment_activities:
+        for entertainment in self.entertainment_activities:
             if entertainment.lower() in activity.lower():
                 return 'entertainment'
         
         return 'uncategorized'   
+    
+    def check_if_activity_is_already_uncategorized(self, activity):
+        with open('uncategorized_activities.csv', mode='r') as file:
+            csv_reader = csv.reader(file)
+            for row in csv_reader:
+                if row[1] == activity:
+                    return True
+        return False
+    def recheck_uncategorized(self):
+        fetched_data = self.fetch_data_csv()
+        check_data = self.recheck_uncategorized_activities()
+
+        for key, value in check_data.items():
+            if key == fetched_data[0]:
+                fetched_data[0] += value
+            elif key == fetched_data[1]:
+                fetched_data[1] += value
+        return fetched_data
+
+    def recheck_uncategorized_activities(self):
+        work_activites_count = 0
+        entertainment_activities_count = 0
+        uncategorized_activities = {}
+        rows_to_delete = []
+
+        with open('uncategorized_activities.csv', mode='r') as file:
+            csv_reader = csv.reader(file)
+            for row in csv_reader:
+                
+                for work_activites in self.work_activities:
+                    if work_activites.lower() in row[1].lower():
+                        work_activites_count+=1
+                        continue
+                for entertainment_activities in self.entertainment_activities:
+                    if entertainment_activities.lower() in row[1].lower():
+                        entertainment_activities_count+=1
+                        continue
+                uncategorized_activities[row[0]] = row[1]
+        print(f'work_activities_count: {work_activites_count}')
+        os.remove('uncategorized_activities.csv')
+        with open('uncategorized_activities.csv', mode='w', newline='') as uncategorized_file:
+            uncategorized_writer = csv.writer(uncategorized_file)
+            for key, value in uncategorized_activities.items():
+                uncategorized_writer.writerow([key, value])
+        return work_activites_count, entertainment_activities_count
    
     def calculate_activities_time_in_minutes(self, activity_count):
         return activity_count * 5 / 60 

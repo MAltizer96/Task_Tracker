@@ -24,6 +24,7 @@ class ProductiveModel:
         self.activity_types_csv_path = os.path.join(self.data_file_path, 'activity_types.csv')
         self.activity_types_db_path = os.path.join(self.data_file_path, 'activity_log_db.csv')
         self.uncategorized_activities_path = os.path.join(self.data_file_path, 'uncategorized_activities.csv')
+
         self.activity_types_file = os.path.join(self.config_path, 'activity_types.json')
         self.activity_log_file = os.path.join(self.data_file_path, 'activity_log.csv')
         self.activity_log_db_file = os.path.join(self.data_file_path, 'activity_log_db.csv')
@@ -57,7 +58,7 @@ class ProductiveModel:
                 # get the current time
                 timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
                 # open csv file to append
-                with open(self.data_file_path / 'activity_log.csv', mode='a', newline='') as file:
+                with open(self.activity_log_file, mode='a', newline='') as file:
                     # create a csv writer and write the timestamp and active window
                     writer = csv.writer(file)                    
                     writer.writerow([timestamp, active_window])

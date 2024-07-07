@@ -6,3 +6,6 @@ activity_log.db
 uncategorized_activities.csv
 activity_log_db.csv
 activity_types.json
+build
+dist
+main.spec

@@ -43,9 +43,9 @@ class MainWindow(QMainWindow):
         # Create a QVBoxLayout to arrange widgets vertically
         layout = QVBoxLayout()
         layout.addLayout(start_layout)
-        layout.addWidget(self.recheck_uncategorized_button)
         layout.addWidget(self.stop_button)
         layout.addWidget(self.submit_to_db_button)
+        layout.addWidget(self.recheck_uncategorized_button)
         layout.addWidget(self.visualize_button)
         # create a QWidget and set it as the central widget of the main window
         widget = QWidget()

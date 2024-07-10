@@ -62,7 +62,7 @@ class ProductiveModel:
         return elapsed > threshold
 
     def write_daily_activity_to_db_csv(self):
-        self.db.write_daily_activity_to_db_csv()
+        self.db.write_to_db()
 
     def fetch_data_csv(self):
         return self.db.fetch_data_csv()

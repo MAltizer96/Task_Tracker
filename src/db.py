@@ -15,8 +15,6 @@ class Database:
         self.config_path = os.path.join(self.project_root,'config')
         self.data_file_path = os.path.join(self.project_root, 'data')
 
-        self.activity_types_csv_path = os.path.join(self.data_file_path, 'activity_types.csv')
-        self.activity_types_db_path = os.path.join(self.data_file_path, 'activity_log_db.csv')
         self.uncategorized_activities_path = os.path.join(self.data_file_path, 'uncategorized_activities.csv')
 
         self.activity_types_file = os.path.join(self.config_path, 'activity_types.json')
@@ -48,65 +46,64 @@ class Database:
 
         return self.work_activites, self.entertainment_activities
     
-    def write_daily_activity_to_db_csv(self):
-        # create a dictionary to store the activity log data
-        activity_log_db = {}
-        try:
-            # open the db file to read
-            with open(self.activity_types_db_path, mode='r') as file:
-                csv_reader = csv.reader(file)
-                next(csv_reader)
-                # read the db file and store the data in the dictionary
-                for row in csv_reader:
-                    # add the data to the dictionary with the type as the key and the count as the value
-                    activity_log_db [row[0]] = int(row[1])
-        except FileNotFoundError:
-            pass
+    def write_to_db(self):
+        # create a dictionary to store the activity log data        
+        activity_log_db_string = self.fetch_data_csv(self.activity_log_db_file)
+        activity_log_db  = {key: int(value) for key, value in activity_log_db_string.items()}
 
-        with open (self.activity_log_file, mode='r') as file:
-            csv_reader = csv.reader(file)  
-            # read the csv file and check the type of activity          
-            for column in csv_reader:
-                # check the type of activity
-                activity_type = self.check_type_of_activity(column[1])
-                if activity_type == 'uncategorized':
-                    with open(self.uncategorized_activities_path, mode='a', newline='') as uncategorized_file:
-                        uncategorized_writer = csv.writer(uncategorized_file)
-                        uncategorized_writer.writerow([column[0], column[1]])                      
-                    continue
-                # check if the activity is in the dictionary
-                if activity_type in activity_log_db:
-                    activity_log_db[activity_type] += 1
-                # if the activity is not in the dictionary, add it
+        activity_log = self.fetch_data_csv(self.activity_log_file)
+
+        uncategorized_file_string = self.fetch_data_csv(self.uncategorized_activities_file)
+        uncategorized_file  = {key: int(value) for key, value in uncategorized_file_string.items()}
+
+        print("activity_log_db: ", activity_log_db)
+        print("activity_log: ", activity_log)
+        print("uncategorized_file: ", uncategorized_file)
+
+        for row in activity_log.values():
+            print(row)
+            current_type = self.check_type_of_activity(row)
+            if current_type == 'uncategorized':
+                print("uncategorized")
+                if uncategorized_file:
+                    for uncategorized_row in uncategorized_file:
+                        if row == uncategorized_row:
+                            print("uncategorized_row: ", uncategorized_file[uncategorized_row])
+                            uncategorized_file[uncategorized_row] = uncategorized_file[uncategorized_row] + 1
+                            break
                 else:
-                    activity_log_db[activity_type] = 1
-        
-        with open (self.activity_types_db_path, mode='w', newline='') as file:
-            db_writer = csv.writer(file)
-            # write the header
-            db_writer.writerow(['type', 'count'])
+                    uncategorized_file[row] = 1
+                    continue
+            print(f"current_type: { current_type}, row: {row} ")                      
 
-            for activity_type, count in activity_log_db.items():
-                db_writer.writerow([activity_type, count])
-        # delete the csv file
-        os.remove(self.activity_log_file)
+            if activity_log_db:
+                for db_row in activity_log_db:
+                    print("db_row: ", db_row)
+                    if current_type == db_row:
+                        activity_log_db[db_row] = activity_log_db[db_row] + 1
+                        break
+                    elif db_row == (activity_log_db):
+                        activity_log_db[current_type] = 1
+                        break
+            else:
+                activity_log_db[current_type] = 1
 
-    def fetch_data_csv(self):
-        # create a dictionary to store the data
-        data = {}
+        # print("activity_log_db: ", activity_log_db)
+        # print("activity_log: ", activity_log)
+        # print("uncategorized_file: ", uncategorized_file)
+ 
+
+
         try:
-            # open the db file to read
-            with open(self.activity_log_db_file, mode='r') as file:
-                csv_reader = csv.reader(file)
-                next(csv_reader)
-                # read the db file and store the data in the dictionary
-                for row in csv_reader:
-                    # add the data to the dictionary with the type as the key and the count as the value
-                    data[row[0]] = int(row[1])
+            os.remove(self.activity_log_file)
         except FileNotFoundError:
+            print("db File not found")
             pass
-        return data
-    
+
+        self.write_to_csv(activity_log_db, self.activity_log_db_file, mode='w')
+        self.write_to_csv(uncategorized_file, self.uncategorized_activities_path, mode='w')
+        return True
+
     def check_if_activity_is_already_uncategorized(self, activity):
         with open(self.uncategorized_activities_file, mode='r') as file:
             csv_reader = csv.reader(file)
@@ -119,7 +116,7 @@ class Database:
         work_activities_count  = 0
         entertainment_activities_count = 0
         uncategorized_activities = {}
-        rows_to_delete = []
+
         with open(self.uncategorized_activities_path, mode='r') as file:
             csv_reader = csv.reader(file)
             for row in csv_reader:
@@ -155,3 +152,34 @@ class Database:
                 return 'entertainment'
         
         return 'uncategorized'   
+    
+    def write_to_csv(self, data, file_path, mode = 'w'):
+        try:
+            with open(file_path, mode = mode, newline='') as file:
+                writer = csv.writer(file)
+                for key, value in data.items():
+                    writer.writerow([key, value])
+        except FileNotFoundError:
+            return "File not found"
+
+    def read_from_csv(self, file):
+        data = {}
+        with open(file, mode='r') as file:
+            csv_reader = csv.reader(file)
+            data = list(csv_reader)
+        return data
+    
+    def fetch_data_csv(self, file):
+        # create a dictionary to store the data
+        data = {}
+        try:
+            # open the db file to read
+            with open(file, mode='r') as file:
+                csv_reader = csv.reader(file)
+                # read the db file and store the data in the dictionary
+                for row in csv_reader:
+                    # add the data to the dictionary with the type as the key and the count as the value
+                    data[row[0]] = row[1]
+        except FileNotFoundError:
+            pass
+        return data

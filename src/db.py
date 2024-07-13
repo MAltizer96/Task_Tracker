@@ -23,8 +23,14 @@ class Database:
         self.uncategorized_activities_file = os.path.join(self.data_file_path, 'uncategorized_activities.csv')
 
         work_activities, entertainment_activities = self.get_activity_types()
+
+        for activity in work_activities:
+            activity = activity.lower()
+
+        for activity in entertainment_activities:
+            activity = activity.lower()
         self.work_activites = work_activities
-        self.entertainment_activities = entertainment_activities   
+        self.entertainment_activities = entertainment_activities
 
     def write_daily_activity_to_csv(self):
         # get the active window
@@ -39,15 +45,19 @@ class Database:
         return True
 
     def get_activity_types(self):
+        # gets the activity types from the json file
         with open(self.activity_types_file, 'r') as file:
             data = json.load(file)
-            self.work_activites = data['work']
-            self.entertainment_activities = data['entertainment']
-
+        # convert the data to lowercase
+        for key in data:
+            data[key] = [item.lower() for item in data[key]]
+        # create the work and entertainment activities lists and return them
+        self.work_activites = data['work']
+        self.entertainment_activities = data['entertainment']
         return self.work_activites, self.entertainment_activities
     
     def write_to_db(self):
-        # create a dictionary to store the activity log data        
+        # create dicts to store the data      
         activity_log_db_string = self.fetch_data_csv(self.activity_log_db_file)
         activity_log_db  = {key: int(value) for key, value in activity_log_db_string.items()}
 
@@ -56,52 +66,42 @@ class Database:
         uncategorized_file_string = self.fetch_data_csv(self.uncategorized_activities_file)
         uncategorized_file  = {key: int(value) for key, value in uncategorized_file_string.items()}
 
-        print("activity_log_db: ", activity_log_db)
-        print("activity_log: ", activity_log)
-        print("uncategorized_file: ", uncategorized_file)
-
+        # loop through the activity log data values
         for row in activity_log.values():
-            print(row)
+            # get the type of activity
             current_type = self.check_type_of_activity(row)
             if current_type == 'uncategorized':
-                print("uncategorized")
-                if uncategorized_file:
+                # check if the activity is already in the uncategorized dict if it is loop through the dict
+                if row in uncategorized_file:
                     for uncategorized_row in uncategorized_file:
                         if row == uncategorized_row:
-                            print("uncategorized_row: ", uncategorized_file[uncategorized_row])
+                            # increment the value of the activity
                             uncategorized_file[uncategorized_row] = uncategorized_file[uncategorized_row] + 1
-                            break
+                            continue                
                 else:
+                    # if the activity is not in the uncategorized dict, add it to the dict
                     uncategorized_file[row] = 1
                     continue
-            print(f"current_type: { current_type}, row: {row} ")                      
-
+                continue
+            # not uncategorized, check if the activity is in the activity log db
             if activity_log_db:
-                for db_row in activity_log_db:
-                    print("db_row: ", db_row)
-                    if current_type == db_row:
-                        activity_log_db[db_row] = activity_log_db[db_row] + 1
-                        break
-                    elif db_row == (activity_log_db):
-                        activity_log_db[current_type] = 1
-                        break
+                # if in the database dict, loop through the dict, increment the value of the activity
+                if current_type in activity_log_db:
+                    for db_row in activity_log_db:
+
+                        if current_type == db_row:
+                            activity_log_db[db_row] = activity_log_db[db_row] + 1
+                            break
+                else:
+                # if not in the database dict, add the activity to the dict
+                    activity_log_db[current_type] = 1
             else:
+                # if the database dict is empty, add the activity to the dict
                 activity_log_db[current_type] = 1
-
-        # print("activity_log_db: ", activity_log_db)
-        # print("activity_log: ", activity_log)
-        # print("uncategorized_file: ", uncategorized_file)
- 
-
-
-        try:
-            os.remove(self.activity_log_file)
-        except FileNotFoundError:
-            print("db File not found")
-            pass
-
+        # write the data to the csv files and remove the activity log file
         self.write_to_csv(activity_log_db, self.activity_log_db_file, mode='w')
         self.write_to_csv(uncategorized_file, self.uncategorized_activities_path, mode='w')
+        os.remove(self.activity_log_file)
         return True
 
     def check_if_activity_is_already_uncategorized(self, activity):
@@ -113,46 +113,42 @@ class Database:
         return False
     
     def recheck_uncategorized_activities(self):
-        work_activities_count  = 0
-        entertainment_activities_count = 0
-        uncategorized_activities = {}
+        # get the data from current uncategorized activities
+        uncategorized_activities = self.fetch_data_csv(self.uncategorized_activities_path)
 
-        with open(self.uncategorized_activities_path, mode='r') as file:
-            csv_reader = csv.reader(file)
-            for row in csv_reader:
-                found = False
-                for work_activites in self.work_activites:
-                    if work_activites.lower() in row[1].lower():
-                        work_activities_count+=1
-                        found = True
-                        break
-                for entertainment_activities in self.entertainment_activities:
-                    if entertainment_activities.lower() in row[1].lower():
-                        entertainment_activities_count+=1
-                        found = True
-                        break
-                if not found:
-                    uncategorized_activities[row[0]] = row[1]
-        os.remove(self.uncategorized_activities_path)
-        with open(self.uncategorized_activities_path, mode='w', newline='') as uncategorized_file:
-            uncategorized_writer = csv.writer(uncategorized_file)
-            for key, value in uncategorized_activities.items():
-                uncategorized_writer.writerow([key, value])
+        # create a dictionary to store the work and entertainment activities
+        db = self.fetch_data_csv(self.activity_log_db_file)
+        print("db: ", db)
+        # loop through the uncategorized activities
+        to_remove = []
+        for activity in uncategorized_activities:
+            current_type = self.check_type_of_activity(activity)
+            # if not uncategorized, add it to the dictionary and remove it from the uncategorized activities
+            if current_type != 'uncategorized':
+                db[current_type] = int(db[current_type]) + int(uncategorized_activities[activity])
+                to_remove.append(activity)
+
+        for activity in to_remove:            
+            if activity in uncategorized_activities:
+                del uncategorized_activities[activity]
+                continue
         
-        return {'work':work_activities_count , 'entertainment':entertainment_activities_count}
+        self.write_to_csv(db, self.activity_log_db_file, mode='w')
+        self.write_to_csv(uncategorized_activities, self.uncategorized_activities_path, mode='w')
+        return True
 
     def check_type_of_activity(self, activity):
-        # loops through the arrays and checks if the activity is in the arrays
-        for work in self.work_activites:
-            if work.lower() in activity.lower():
-                return 'work'
-            
-        for entertainment in self.entertainment_activities:
-            if entertainment.lower() in activity.lower():
-                return 'entertainment'
-        
-        return 'uncategorized'   
-    
+        # Convert the activity to lowercase
+        activity_lower = activity.lower()             
+
+        # check for the type of activity in the list of activities
+        if any(word in activity_lower for word in self.work_activites):
+            return 'work'        
+        elif any(word in activity_lower for word in self.entertainment_activities):
+            return 'entertainment'        
+        else:
+            return 'uncategorized'
+
     def write_to_csv(self, data, file_path, mode = 'w'):
         try:
             with open(file_path, mode = mode, newline='') as file:
@@ -173,13 +169,14 @@ class Database:
         # create a dictionary to store the data
         data = {}
         try:
-            # open the db file to read
+            # open the db file to read, getting data from csv
             with open(file, mode='r') as file:
                 csv_reader = csv.reader(file)
-                # read the db file and store the data in the dictionary
                 for row in csv_reader:
-                    # add the data to the dictionary with the type as the key and the count as the value
                     data[row[0]] = row[1]
         except FileNotFoundError:
             pass
         return data
+    
+    def get_db_file(self):
+        return self.activity_log_db_file

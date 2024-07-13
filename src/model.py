@@ -14,13 +14,10 @@ class ProductiveModel:
     def __init__(self):
         self.db = db()
 
-
         work_activities, entertainment_activities = self.db.get_activity_types()
         self.work_activites = work_activities
         self.entertainment_activities = entertainment_activities      
-        
-        print(f'work_activities {self.work_activites}')
-        print(f'entertainment_activities {self.entertainment_activities}')
+
         self.is_tracking = False
 
     def start_tracking(self):
@@ -39,14 +36,8 @@ class ProductiveModel:
     def stop_tracking(self):
         self.is_tracking = False
     
-    def recheck_uncategorized(self):
-        fetched_data = self.fetch_data_csv()
-        check_data = self.db.recheck_uncategorized_activities()
-        print(f'check_data : {check_data}')
-        for key, value in check_data.items():
-            if key in fetched_data:
-                fetched_data[key] += value
-        return fetched_data
+    def recheck_uncategorized(self):        
+        self.db.recheck_uncategorized_activities()
    
     def calculate_activities_time_in_minutes(self, activity_count):
         return activity_count * 5 / 60 
@@ -64,8 +55,13 @@ class ProductiveModel:
     def write_daily_activity_to_db_csv(self):
         self.db.write_to_db()
 
-    def fetch_data_csv(self):
-        return self.db.fetch_data_csv()
+    def fetch_db_csv(self):
+        data = self.db.fetch_data_csv(self.db.get_db_file())
+        for row in data:
+            data[row] = int(data[row])
+            data[row] = self.calculate_activities_time_in_minutes(data[row])
+        #print(f'data: {data}')
+        return data
 
 class LASTINPUTINFO(Structure):
     _fields_ = [("cbSize", c_uint), ("dwTime", c_uint)]

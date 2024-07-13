@@ -32,8 +32,7 @@ class ProductivityApp():
         self.model.write_daily_activity_to_db_csv()
     
     def create_pie_chart(self):
-        data = self.model.fetch_data_csv()
-        print(f'data: {data}')
+        data = self.model.fetch_db_csv()
         self.view.setup_pie_chart(data)
 
     def recheck_uncategorized(self):
